@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "interconnectionplayerfabric",
+  "version": "${version}",
+  "name": "interconnectionplayerfabric",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "LGPL-3.0",
+  "icon": "assets/interconnectionplayerfabric/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["com.foxapplication.mc.interconnectionplayer.fabric.InterconnectionPlayerFabric"]
+  },
+  "mixins": [
+    "interconnectionplayerfabric.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": "*",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}",
+    "interconnectionfabric": "*",
+    "foxcorefabric": "*"
+  }
+}

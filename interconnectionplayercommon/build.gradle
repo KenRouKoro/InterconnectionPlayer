@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group = 'com.foxapplication.mc'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven {url "https://git.foxapplication.com/api/packages/koro/maven"}
+    mavenLocal()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    implementation "com.foxapplication.mc:foxcore:1.0.1"
+    implementation "com.foxapplication.mc:interaction-base:1.2.1"
+    implementation "com.foxapplication.mc:interconnectioncommon:1.0.1"
+
+    implementation 'com.esotericsoftware.kryo:kryo5:5.5.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.26'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
+}
+
+test {
+    useJUnitPlatform()
+}
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId project.group
+            artifactId project.name
+            version project.version
+            from components.java
+        }
+    }
+}
