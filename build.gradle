@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.foxapplication.mc'
-version = '1.0.0'
+version = '1.0.1'
 
 repositories {
     maven { url "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/" }

@@ -1,6 +1,8 @@
 package com.foxapplication.mc.interconnectionplayer.common.util;
 
 import com.foxapplication.embed.hutool.core.map.SafeConcurrentHashMap;
+import com.foxapplication.mc.interconnection.common.Interconnection;
+import com.foxapplication.mc.interconnectionplayer.common.InterconnectionPlayerCommon;
 import com.foxapplication.mc.interconnectionplayer.common.cache.PlayerTimestamp;
 import lombok.Getter;
 
@@ -35,8 +37,9 @@ public class PlayerTimestampDataAggregator {
     public void startTimeoutCountdown() {
         timeoutFuture = scheduler.schedule(this::onTimeout, timeout, timeUnit);
     }
-    public String getMaxPlayerTimestamp(String... filter){
+    public String getMaxPlayerTimestamp(PlayerTimestamp mine,String... filter){
         HashMap<String, PlayerTimestamp> map = new HashMap<>(receivedDataPackets);
+        map.put(Interconnection.getConfig().getId(),mine);
         for(String f:filter){
             map.remove(f);
         }

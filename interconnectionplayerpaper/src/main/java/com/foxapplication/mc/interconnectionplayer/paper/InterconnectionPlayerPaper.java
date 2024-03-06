@@ -7,19 +7,29 @@ import com.foxapplication.embed.hutool.core.util.StrUtil;
 import com.foxapplication.embed.hutool.log.Log;
 import com.foxapplication.embed.hutool.log.LogFactory;
 import com.foxapplication.mc.interaction.base.service.ConnectManager;
+import com.foxapplication.mc.interconnection.common.Interconnection;
 import com.foxapplication.mc.interconnection.paper.util.NBTSendUtil;
 import com.foxapplication.mc.interconnectionplayer.common.InterconnectionPlayer;
 import com.foxapplication.mc.interconnectionplayer.common.InterconnectionPlayerCommon;
+import com.foxapplication.mc.interconnectionplayer.common.cache.PlayerTimestamp;
 import com.foxapplication.mc.interconnectionplayer.common.cache.PlayerTimestampCache;
 import com.foxapplication.mc.interconnectionplayer.common.config.InterconnectionPlayerConfig;
 import com.mojang.datafixers.DataFixer;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.*;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.*;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.PlayerDataStorage;
 import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_20_R3.entity.CraftPlayer;
@@ -82,7 +92,6 @@ public final class InterconnectionPlayerPaper extends JavaPlugin implements @Not
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerConnect(PlayerJoinEvent event){
         if (event.getPlayer() instanceof CraftPlayer player){
-            PlayerTimestampCache.put(player.getHandle().getStringUUID(), System.currentTimeMillis());
             if(CONFIG.isPlayerWhitelist()){
                 if (CONFIG.isPlayerWhitelistUseReverse()){
                     if (CONFIG.getPlayerWhitelistList().contains(player.getHandle().getStringUUID()))return;
@@ -108,8 +117,10 @@ public final class InterconnectionPlayerPaper extends JavaPlugin implements @Not
                         filter = nodes.toArray(new String[0]);
                     }
                 }
-                node = playerTimestampDataAggregator.getMaxPlayerTimestamp(filter);
+                node = playerTimestampDataAggregator.getMaxPlayerTimestamp(new PlayerTimestamp(uuid, PlayerTimestampCache.get(uuid)),filter);
+                PlayerTimestampCache.put(player.getHandle().getStringUUID(), System.currentTimeMillis());
                 if (node==null)return;
+                if (node.equals(Interconnection.getConfig().getId()))return;
                 ThreadUtil.execute(()->{
                     ThreadUtil.safeSleep(200);
                     InterconnectionPlayerCommon.sendDataRequest(node, uuid, (playerData) -> {
@@ -232,7 +243,25 @@ public final class InterconnectionPlayerPaper extends JavaPlugin implements @Not
 
             CompoundTag compoundTag2 = new CompoundTag();
 
-            compoundTag2.put("Inventory", compoundTag.getList("Inventory", 10));
+            ListTag listTag = compoundTag.getList("Inventory", 10);
+
+            for(int n=0;n<listTag.size();n++){
+                CompoundTag tag = listTag.getCompound(n);
+                String id= tag.getString("id");
+                if (id.equals("minecraft:paper")){
+                    if (tag.contains("tag")){
+                        CompoundTag tag2 = tag.getCompound("tag");
+                        if (tag2.contains("ModNbtItemData")){
+                            CompoundTag modTag = tag2.getCompound("ModNbtItemData");
+                            listTag.set(n,modTag);
+                        }
+                    }
+                }
+            }
+            compoundTag2.put("Inventory", listTag);
+
+
+
             compoundTag2.putInt("SelectedItemSlot",compoundTag.getInt("SelectedItemSlot"));
 
             compoundTag2.putFloat("XpP",compoundTag.getFloat("XpP"));
@@ -244,7 +273,21 @@ public final class InterconnectionPlayerPaper extends JavaPlugin implements @Not
             }
 
             if(compoundTag.contains("EnderItems", 9)){
-                compoundTag2.put("EnderItems",compoundTag.getList("EnderItems", 10));
+                ListTag listTag2 = compoundTag.getList("EnderItems", 10);
+                for(int n=0;n<listTag2.size();n++){
+                    CompoundTag tag = listTag2.getCompound(n);
+                    String id= tag.getString("id");
+                    if (id.equals("minecraft:paper")){
+                        if (tag.contains("tag")){
+                            CompoundTag tag2 = tag.getCompound("tag");
+                            if (tag2.contains("ModNbtItemData")){
+                                CompoundTag modTag = tag2.getCompound("ModNbtItemData");
+                                listTag2.set(n,modTag);
+                            }
+                        }
+                    }
+                }
+                compoundTag2.put("EnderItems",listTag2);
             }
 
             compoundTag = compoundTag2;
@@ -260,8 +303,26 @@ public final class InterconnectionPlayerPaper extends JavaPlugin implements @Not
 
         if(CONFIG.isEnableBackpack()){
             ListTag listTag = compoundTag.getList("Inventory", 10);
-            player.getInventory().load(listTag);
 
+            for(int n=0;n<listTag.size();n++){
+                CompoundTag compoundTag2 = listTag.getCompound(n);
+                String id = compoundTag2.getString("id");
+                if(id.equals("minecraft:air"))continue;
+
+                if(BuiltInRegistries.ITEM.get(new ResourceLocation(id)).equals(Items.AIR)){
+                    CompoundTag saveTag = compoundTag2.copy();
+                    saveTag.putString("id", "minecraft:paper");
+                    CompoundTag tag = new CompoundTag();
+                    CompoundTag displayTag = new CompoundTag();
+                    displayTag.putString("Name",Component.Serializer.toJson(Component.literal("ModItem："+id).setStyle(Style.EMPTY.withColor(ChatFormatting.AQUA))));
+                    tag.put("ModNbtItemData",compoundTag2);
+                    tag.put("display",displayTag);
+                    saveTag.put("tag",tag);
+                    listTag.set(n,saveTag);
+                }
+
+            }
+            player.getInventory().load(listTag);
             player.getInventory().selected = compoundTag.getInt("SelectedItemSlot");
         }
 
@@ -279,7 +340,26 @@ public final class InterconnectionPlayerPaper extends JavaPlugin implements @Not
 
         if (CONFIG.isEnableEnderItems()){
             if(compoundTag.contains("EnderItems", 9)){
-                player.getEnderChestInventory().fromTag(compoundTag.getList("EnderItems", 10));
+                ListTag enderItems = compoundTag.getList("EnderItems", 10);
+                for(int n=0;n<enderItems.size();n++){
+                    CompoundTag compoundTag2 = enderItems.getCompound(n);
+
+                    String id = compoundTag2.getString("id");
+                    if(id.equals("minecraft:air"))continue;
+
+                    if(BuiltInRegistries.ITEM.get(new ResourceLocation(id)).equals(Items.AIR)){
+                        CompoundTag saveTag = compoundTag2.copy();
+                        saveTag.putString("id", "minecraft:paper");
+                        CompoundTag tag = new CompoundTag();
+                        CompoundTag displayTag = new CompoundTag();
+                        displayTag.putString("Name",Component.Serializer.toJson(Component.literal("ModItem："+id).setStyle(Style.EMPTY.withColor(ChatFormatting.AQUA))));
+                        tag.put("ModNbtItemData",compoundTag2);
+                        tag.put("display",displayTag);
+                        saveTag.put("tag",tag);
+                        enderItems.set(n,saveTag);
+                    }
+                }
+                player.getEnderChestInventory().fromTag(enderItems);
             }
         }
 
