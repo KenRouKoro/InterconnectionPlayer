@@ -1,6 +1,8 @@
 # InterconnectionPlayer 互联玩家同步
 **InterconnectionPlayer 互联玩家同步**是一个用于在多个不同服务端的Minecraft服务器间同步玩家数据的Mod/Plugin。  
 在默认情况下同步玩家的背包，生命值，末影箱，经验值。
+
+**当前版本会保留Mod物品，会以具有特殊NBT的纸张展现，但潜影壳中的Mod物品会丢失。**
 ## 依赖
 请安装前置依赖 [FoxCore](https://github.com/KenRouKoro/FoxMCProject) 和 [Interconnection](https://github.com/KenRouKoro/Interconnection)。
 ## 使用
